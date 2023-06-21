@@ -2,6 +2,7 @@ version: '3.4'
       
 services:
 
+  # The test app. Runs code to write/read via dapr and direct to redis.
   stateperformancetesting:
     image: ${DOCKER_REGISTRY-}stateperformancetesting
     build:
@@ -15,6 +16,7 @@ services:
     networks:
       - local-network
 
+  # The dapr side car, which abstracts away redis from the test app.    
   stateperformancetesting-dapr:
     image: "daprio/daprd:edge"
     command: [
@@ -31,14 +33,14 @@ services:
       - stateperformancetesting
     network_mode: "service:stateperformancetesting" # Attach the stateperformancetesting-dapr service to the stateperformancetesting network namespace
 
+  # A dapr component.  
   placement:
     image: "daprio/dapr"
     command: ["./placement", "--port", "50006"]
     ports:
       - "50006:50006"
       
-  # Deploy other daprized services and components (i.e. Redis)
-  
+  # The redis instance.
   redis:
     image: redis:latest
     ports:
