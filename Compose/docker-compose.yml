@@ -1,0 +1,51 @@
+version: '3.4'
+      
+services:
+
+  stateperformancetesting:
+    image: ${DOCKER_REGISTRY-}stateperformancetesting
+    build:
+      context: .
+      dockerfile: ../StatePerformanceTesting/Dockerfile
+    ports:
+      - "50001:50001" # Dapr instances communicate over gRPC so we need to expose the gRPC port
+    depends_on:
+      - redis
+      - placement
+    networks:
+      - local-network
+
+  stateperformancetesting-dapr:
+    image: "daprio/daprd:edge"
+    command: [
+      "./daprd",
+     "--app-id", "stateperformancetesting",
+     "--app-port", "3000",
+     "--placement-host-address", "placement:50006", # Dapr's placement service can be reach via the docker DNS entry
+     "--dapr-grpc-port", "50001",
+     "--resources-path", "./components"
+     ]
+    volumes:
+        - "./components/:/components" # Mount our components folder for the runtime to use. The mounted location must match the --resources-path argument.
+    depends_on:
+      - stateperformancetesting
+    network_mode: "service:stateperformancetesting" # Attach the stateperformancetesting-dapr service to the stateperformancetesting network namespace
+
+  placement:
+    image: "daprio/dapr"
+    command: ["./placement", "--port", "50006"]
+    ports:
+      - "50006:50006"
+      
+  # Deploy other daprized services and components (i.e. Redis)
+  
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    networks:
+      - local-network
+      
+networks:
+  local-network:
+ 
